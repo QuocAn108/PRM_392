@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using PRM392_BE.Services;
 using PRM392_BE.Model;
+using PRM392_BE.Model.DTO;
 
 namespace PRM392_BE.Controllers
 {
@@ -32,9 +33,9 @@ namespace PRM392_BE.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<Product>> Add([FromBody] Product product)
+        public async Task<ActionResult<Product>> Add([FromBody] CreateProductRequest request)
         {
-            var created = await _productService.AddAsync(product);
+            var created = await _productService.AddAsync(request);
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
         }
 
