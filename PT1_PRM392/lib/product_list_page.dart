@@ -1,3 +1,4 @@
+// product_list_page.dart
 import 'package:flutter/material.dart';
 import 'product.dart';
 
@@ -20,6 +21,12 @@ class _ProductListPageState extends State<ProductListPage> {
     super.initState();
     _fetchData();
     _searchController.addListener(_onSearch);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchData() async {
@@ -45,7 +52,7 @@ class _ProductListPageState extends State<ProductListPage> {
   void _onSearch() {
     setState(() {
       _filteredProducts = _products
-          .where((p) => p.name.toLowerCase().contains(_searchController.text.toLowerCase()))
+          .where((p) => p.title.toLowerCase().contains(_searchController.text.toLowerCase()))
           .toList();
     });
   }
@@ -54,19 +61,80 @@ class _ProductListPageState extends State<ProductListPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(product.name),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(child: Image.network(product.imageUrl, height: 120)),
-            const SizedBox(height: 12),
-            Text('Price: ${product.price}'),
-            const SizedBox(height: 8),
-            Text('Category: ${product.category}'),
-            const SizedBox(height: 8),
-            Text(product.description),
-          ],
+        title: Text(
+          product.title,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    product.imageUrl,
+                    height: 150,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      height: 150,
+                      width: double.infinity,
+                      color: Colors.grey.shade200,
+                      child: const Icon(Icons.image, size: 50, color: Colors.grey),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.attach_money, color: Colors.green.shade600, size: 20),
+                    Text(
+                      '₫${product.price.toStringAsFixed(0)}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: Colors.green.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  product.category,
+                  style: TextStyle(
+                    color: Colors.blue.shade700,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Description:',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                product.description,
+                style: const TextStyle(fontSize: 14, height: 1.4),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -80,16 +148,23 @@ class _ProductListPageState extends State<ProductListPage> {
 
   Future<void> _addOrEditProduct({Product? product}) async {
     final isEdit = product != null;
-    final nameController = TextEditingController(text: product?.name ?? '');
+    final titleController = TextEditingController(text: product?.title ?? '');
     final imageController = TextEditingController(text: product?.imageUrl ?? '');
     final priceController = TextEditingController(text: product?.price.toString() ?? '');
     final descController = TextEditingController(text: product?.description ?? '');
     final categoryController = TextEditingController(text: product?.category ?? '');
     final formKey = GlobalKey<FormState>();
+
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(isEdit ? 'Edit Product' : 'Add Product'),
+        title: Row(
+          children: [
+            Icon(isEdit ? Icons.edit : Icons.add, color: Colors.deepPurple),
+            const SizedBox(width: 8),
+            Text(isEdit ? 'Edit Product' : 'Add New Product'),
+          ],
+        ),
         content: SingleChildScrollView(
           child: Form(
             key: formKey,
@@ -97,34 +172,56 @@ class _ProductListPageState extends State<ProductListPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextFormField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Product Name'),
-                  validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                  controller: titleController,
+                  decoration: const InputDecoration(
+                    labelText: 'Product Title',
+                    prefixIcon: Icon(Icons.shopping_bag),
+                  ),
+                  validator: (v) => v == null || v.trim().isEmpty ? 'Title is required' : null,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 TextFormField(
                   controller: priceController,
-                  decoration: const InputDecoration(labelText: 'Price'),
+                  decoration: const InputDecoration(
+                    labelText: 'Price (₫)',
+                    prefixIcon: Icon(Icons.attach_money),
+                  ),
                   keyboardType: TextInputType.number,
-                  validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'Price is required';
+                    if (double.tryParse(v) == null || double.parse(v) <= 0) {
+                      return 'Please enter a valid price';
+                    }
+                    return null;
+                  },
                 ),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: descController,
-                  decoration: const InputDecoration(labelText: 'Description'),
-                  validator: (v) => v == null || v.isEmpty ? 'Required' : null,
-                ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 TextFormField(
                   controller: categoryController,
-                  decoration: const InputDecoration(labelText: 'Category'),
-                  validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                  decoration: const InputDecoration(
+                    labelText: 'Category',
+                    prefixIcon: Icon(Icons.category),
+                  ),
+                  validator: (v) => v == null || v.trim().isEmpty ? 'Category is required' : null,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: descController,
+                  decoration: const InputDecoration(
+                    labelText: 'Description',
+                    prefixIcon: Icon(Icons.description),
+                  ),
+                  maxLines: 3,
+                  validator: (v) => v == null || v.trim().isEmpty ? 'Description is required' : null,
+                ),
+                const SizedBox(height: 12),
                 TextFormField(
                   controller: imageController,
-                  decoration: const InputDecoration(labelText: 'Image URL'),
-                  validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                  decoration: const InputDecoration(
+                    labelText: 'Image URL',
+                    prefixIcon: Icon(Icons.image),
+                  ),
+                  validator: (v) => v == null || v.trim().isEmpty ? 'Image URL is required' : null,
                 ),
               ],
             ),
@@ -144,13 +241,12 @@ class _ProductListPageState extends State<ProductListPage> {
                 if (isEdit) {
                   final updated = await updateProduct(Product(
                     id: product!.id,
-                    name: nameController.text.trim(),
+                    title: titleController.text.trim(),
                     imageUrl: imageController.text.trim(),
                     price: double.tryParse(priceController.text.trim()) ?? 0,
                     description: descController.text.trim(),
                     category: categoryController.text.trim(),
                   ));
-                  // Nếu API không lưu, cập nhật local để trải nghiệm
                   final idx = _products.indexWhere((p) => p.id == updated.id);
                   if (idx != -1) {
                     setState(() {
@@ -164,13 +260,12 @@ class _ProductListPageState extends State<ProductListPage> {
                 } else {
                   final created = await createProduct(Product(
                     id: 0,
-                    name: nameController.text.trim(),
+                    title: titleController.text.trim(),
                     imageUrl: imageController.text.trim(),
                     price: double.tryParse(priceController.text.trim()) ?? 0,
                     description: descController.text.trim(),
                     category: categoryController.text.trim(),
                   ));
-                  // Nếu API không lưu, thêm vào local để trải nghiệm
                   setState(() {
                     _products.add(created);
                     _onSearch();
@@ -184,7 +279,11 @@ class _ProductListPageState extends State<ProductListPage> {
                 });
               }
             },
-            child: Text(isEdit ? 'Save' : 'Add'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.deepPurple,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(isEdit ? 'Save Changes' : 'Add Product'),
           ),
         ],
       ),
@@ -195,11 +294,27 @@ class _ProductListPageState extends State<ProductListPage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Product'),
-        content: Text('Are you sure you want to delete "${product.name}"?'),
+        title: const Row(
+          children: [
+            Icon(Icons.warning, color: Colors.red),
+            SizedBox(width: 8),
+            Text('Delete Product'),
+          ],
+        ),
+        content: Text('Are you sure you want to delete "${product.title}"? This action cannot be undone.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete'),
+          ),
         ],
       ),
     );
@@ -207,7 +322,6 @@ class _ProductListPageState extends State<ProductListPage> {
       setState(() => _isLoading = true);
       try {
         await deleteProduct(product.id);
-        // Nếu API không xoá thật, xoá local để trải nghiệm
         setState(() {
           _products.removeWhere((p) => p.id == product.id);
           _onSearch();
@@ -226,13 +340,20 @@ class _ProductListPageState extends State<ProductListPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Product List'),
+        title: const Text('Product Management'),
+        backgroundColor: Colors.deepPurple.shade50,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _fetchData,
+            tooltip: 'Refresh',
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () {
               Navigator.pushReplacementNamed(context, '/login');
             },
+            tooltip: 'Logout',
           ),
         ],
       ),
@@ -242,57 +363,155 @@ class _ProductListPageState extends State<ProductListPage> {
           children: [
             TextField(
               controller: _searchController,
-              decoration: const InputDecoration(
-                labelText: 'Search product',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: 'Search products...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () {
+                    _searchController.clear();
+                    _onSearch();
+                  },
+                )
+                    : null,
               ),
             ),
             const SizedBox(height: 16),
             if (_isLoading)
-              const Expanded(child: Center(child: CircularProgressIndicator())),
+              const Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(),
+                      SizedBox(height: 16),
+                      Text('Loading products...'),
+                    ],
+                  ),
+                ),
+              ),
             if (_error != null)
-              Expanded(child: Center(child: Text(_error!, style: TextStyle(color: Colors.red)))),
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error, size: 64, color: Colors.red.shade300),
+                      const SizedBox(height: 16),
+                      Text(
+                        _error!,
+                        style: TextStyle(color: Colors.red.shade600),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _fetchData,
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             if (!_isLoading && _error == null)
               Expanded(
                 child: _filteredProducts.isEmpty
-                    ? const Center(child: Text('No products found'))
-                    : ListView.separated(
-                        itemCount: _filteredProducts.length,
-                        separatorBuilder: (context, index) => const Divider(),
-                        itemBuilder: (context, index) {
-                          final product = _filteredProducts[index];
-                          return ListTile(
-                            leading: ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.network(product.imageUrl, width: 56, height: 56, fit: BoxFit.cover, errorBuilder: (c, e, s) => const Icon(Icons.image)),
-                            ),
-                            title: Text(product.name, style: const TextStyle(fontWeight: FontWeight.w500)),
-                            subtitle: Text('₫${product.price}'),
-                            onTap: () => _showProductDetail(product),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.edit, color: Colors.blue),
-                                  onPressed: () => _addOrEditProduct(product: product),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.delete, color: Colors.red),
-                                  onPressed: () => _deleteProduct(product),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
+                    ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.shopping_bag_outlined, size: 64, color: Colors.grey.shade400),
+                      const SizedBox(height: 16),
+                      Text(
+                        _searchController.text.isNotEmpty
+                            ? 'No products found matching "${_searchController.text}"'
+                            : 'No products available',
+                        style: TextStyle(color: Colors.grey.shade600),
+                        textAlign: TextAlign.center,
                       ),
+                    ],
+                  ),
+                )
+                    : ListView.separated(
+                  itemCount: _filteredProducts.length,
+                  separatorBuilder: (context, index) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    final product = _filteredProducts[index];
+                    return Card(
+                      elevation: 1,
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.all(12),
+                        leading: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            product.imageUrl,
+                            width: 60,
+                            height: 60,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => Container(
+                              width: 60,
+                              height: 60,
+                              color: Colors.grey.shade200,
+                              child: const Icon(Icons.image, color: Colors.grey),
+                            ),
+                          ),
+                        ),
+                        title: Text(
+                          product.title,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 4),
+                            Text(
+                              '₫${product.price.toStringAsFixed(0)}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green.shade700,
+                                fontSize: 16,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              product.category,
+                              style: TextStyle(color: Colors.blue.shade600),
+                            ),
+                          ],
+                        ),
+                        onTap: () => _showProductDetail(product),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.edit, color: Colors.blue),
+                              onPressed: () => _addOrEditProduct(product: product),
+                              tooltip: 'Edit',
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed: () => _deleteProduct(product),
+                              tooltip: 'Delete',
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _addOrEditProduct(),
-        child: const Icon(Icons.add),
+        backgroundColor: Colors.deepPurple,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add),
+        label: const Text('Add Product'),
       ),
     );
   }
