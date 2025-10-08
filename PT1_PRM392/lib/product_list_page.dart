@@ -8,17 +8,31 @@ class SimpleCartService {
   factory SimpleCartService() => _instance;
   SimpleCartService._internal();
 
-  List<Product> _cartItems = [];
+  final Map<int, CartItem> _cartItems = {}; // Sử dụng Map với productId làm key
 
-  List<Product> get cartItems => List.unmodifiable(_cartItems);
-  int get itemCount => _cartItems.length;
+  List<CartItem> get cartItems => _cartItems.values.toList();
+  int get itemCount => _cartItems.values.fold(0, (sum, item) => sum + item.quantity);
 
   void addToCart(Product product) {
-    _cartItems.add(product);
+    if (_cartItems.containsKey(product.id)) {
+      _cartItems[product.id]!.quantity++;
+    } else {
+      _cartItems[product.id] = CartItem(product: product, quantity: 1);
+    }
   }
 
   void removeFromCart(Product product) {
-    _cartItems.removeWhere((item) => item.id == product.id);
+    if (_cartItems.containsKey(product.id)) {
+      if (_cartItems[product.id]!.quantity > 1) {
+        _cartItems[product.id]!.quantity--;
+      } else {
+        _cartItems.remove(product.id);
+      }
+    }
+  }
+
+  void removeItemCompletely(Product product) {
+    _cartItems.remove(product.id);
   }
 
   void clearCart() {
@@ -26,8 +40,18 @@ class SimpleCartService {
   }
 
   double get totalPrice {
-    return _cartItems.fold(0.0, (sum, item) => sum + item.price);
+    return _cartItems.values.fold(0.0, (sum, item) => sum + item.totalPrice);
   }
+}
+
+// Cart Item class
+class CartItem {
+  final Product product;
+  int quantity;
+
+  CartItem({required this.product, this.quantity = 1});
+
+  double get totalPrice => product.price * quantity;
 }
 
 class ProductListPage extends StatefulWidget {
@@ -150,7 +174,8 @@ class _ProductListPageState extends State<ProductListPage> {
                     controller: scrollController,
                     itemCount: _cartService.cartItems.length,
                     itemBuilder: (context, index) {
-                      final product = _cartService.cartItems[index];
+                      final cartItem = _cartService.cartItems[index];
+                      final product = cartItem.product;
                       return Card(
                         child: ListTile(
                           leading: ClipRRect(
@@ -165,16 +190,45 @@ class _ProductListPageState extends State<ProductListPage> {
                             ),
                           ),
                           title: Text(product.title, maxLines: 2, overflow: TextOverflow.ellipsis),
-                          subtitle: Text('₫${product.price.toStringAsFixed(0)}'),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.remove_circle, color: Colors.red),
-                            onPressed: () {
-                              setState(() {
-                                _cartService.removeFromCart(product);
-                              });
-                              Navigator.pop(context);
-                              if (_cartService.itemCount > 0) _showCart();
-                            },
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('₫${product.price.toStringAsFixed(0)} x ${cartItem.quantity}'),
+                              Text(
+                                'Total: ₫${cartItem.totalPrice.toStringAsFixed(0)}',
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Decrease quantity button
+                              if (cartItem.quantity > 1)
+                                IconButton(
+                                  icon: const Icon(Icons.remove, color: Colors.orange, size: 20),
+                                  onPressed: () {
+                                    setState(() {
+                                      _cartService.removeFromCart(product);
+                                    });
+                                    Navigator.pop(context);
+                                    _showCart(); // Refresh cart
+                                  },
+                                  tooltip: 'Decrease quantity',
+                                ),
+                              // Remove item completely button
+                              IconButton(
+                                icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+                                onPressed: () {
+                                  setState(() {
+                                    _cartService.removeItemCompletely(product);
+                                  });
+                                  Navigator.pop(context);
+                                  if (_cartService.itemCount > 0) _showCart();
+                                },
+                                tooltip: 'Remove item',
+                              ),
+                            ],
                           ),
                         ),
                       );
