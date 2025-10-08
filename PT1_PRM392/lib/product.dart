@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'config/environment.dart';
 
 class Product {
   final int id;
@@ -41,12 +42,11 @@ class Product {
   }
 }
 
-const String baseUrl = 'http://10.0.2.2:5228/api';
 
 Future<List<Product>> fetchProducts() async {
   try {
     final response = await http.get(
-      Uri.parse('$baseUrl/Product'),
+      Uri.parse('${EnvironmentConfig.baseUrl}${EnvironmentConfig.productsEndpoint}'),
       headers: {'Content-Type': 'application/json'},
     );
 
@@ -64,7 +64,7 @@ Future<List<Product>> fetchProducts() async {
 Future<Product> createProduct(Product product) async {
   try {
     final response = await http.post(
-      Uri.parse('$baseUrl/Product'),
+      Uri.parse('${EnvironmentConfig.baseUrl}${EnvironmentConfig.productsEndpoint}'),
       headers: {'Content-Type': 'application/json'},
       body: json.encode(product.toJson()),
     );
@@ -82,7 +82,7 @@ Future<Product> createProduct(Product product) async {
 Future<Product> updateProduct(Product product) async {
   try {
     final response = await http.put(
-      Uri.parse('$baseUrl/Product/${product.id}'),
+      Uri.parse('${EnvironmentConfig.baseUrl}${EnvironmentConfig.productsEndpoint}/${product.id}'),
       headers: {'Content-Type': 'application/json'},
       body: json.encode(product.toJson()),
     );
@@ -100,11 +100,11 @@ Future<Product> updateProduct(Product product) async {
 Future<void> deleteProduct(int id) async {
   try {
     final response = await http.delete(
-      Uri.parse('$baseUrl/Product/$id'),
+      Uri.parse('${EnvironmentConfig.baseUrl}${EnvironmentConfig.productsEndpoint}/$id'),
       headers: {'Content-Type': 'application/json'},
     );
 
-    if (response.statusCode != 200) {
+    if (response.statusCode != 200 && response.statusCode != 204) {
       throw Exception('Failed to delete product: ${response.statusCode}');
     }
   } catch (e) {
