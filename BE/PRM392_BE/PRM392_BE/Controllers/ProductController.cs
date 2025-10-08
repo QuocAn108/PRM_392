@@ -57,7 +57,7 @@ namespace PRM392_BE.Controllers
             var deleted = await _productService.DeleteAsync(id);
             if (!deleted)
                 return NotFound();
-            return NoContent();
+            return Ok();
         }
     }
 }
